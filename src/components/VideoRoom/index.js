@@ -36,7 +36,7 @@ const VideoRoom = (props) => {
         socket.current = io.connect("/")
         navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
             setStream(stream);
-            if (userVideo.current){
+            if (userVideo.current) {
                 userVideo.current.srcObject = stream;
             }
         })
@@ -55,7 +55,15 @@ const VideoRoom = (props) => {
     }, [])
 
     const callPeer = id => {
+        const peer = new Peer({
+            initiator: true,
+            trickle: false,
+            stream: stream,
+        });
 
+        peer.on("signal", data => {
+            socket.current.emit("callUser", {userToCall: id, signalData: data, from: yourID})
+        })
     }
 
     const acceptCall = () => {
@@ -63,11 +71,47 @@ const VideoRoom = (props) => {
     }
 
     let UserVideo;
-    if(stream)
+    if (stream) {
+        UserVideo = (
+            <Video playsInline muted ref={userVideo} autoPlay/>
+        );
+    }
+
+    let PartnerVideo;
+    if (callAccepted) {
+        PartnerVideo = (
+            <Video playsInline ref={partnerVideo} autoPlay/>
+        )
+    }
+
+    let incomingCall;
+    if (receivingCall) {
+        incomingCall = (
+            <div>
+                <h1>{caller} is calling you</h1>
+                <button onClick={acceptCall}>Accept</button>
+            </div>
+        )
+    }
 
     return (
         <Container>
-            HI
+            <Row>
+                {UserVideo}
+                {PartnerVideo}
+            </Row>
+            <Row>
+                {Object.keys(users.map(key => {
+                    if (key === yourID) return null
+
+                    return (
+                        <button onClick={() => callPeer(key)}>Call {key}</button>
+                    )
+                }))}
+            </Row>
+            <Row>
+                {incomingCall}
+            </Row>
         </Container>
     )
 }
