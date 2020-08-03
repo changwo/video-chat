@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
 import styled from "styled-components";
+import Peer from "simple-peer";
 import io from "socket.io-client";
 
 const Container = styled.div`
@@ -25,7 +26,7 @@ const VideoRoom = (props) => {
     const [stream, setStream] = useState()
     const [receivingCall, setReceivingCall] = useState(false)
     const [caller, setCaller] = useState()
-    const [callerSiglnal, setCallerSiglnal] = useState()
+    const [callerSignal, setCallerSignal] = useState()
     const [callAccepted, setCallAccepted] = useState(false)
 
     const userVideo = useRef();
@@ -50,7 +51,9 @@ const VideoRoom = (props) => {
         })
 
         socket.current.on("hey", (data) => {
-
+            setReceivingCall(true);
+            setCaller(data.from);
+            setCallerSignal(data.signal);
         })
     }, [])
 
@@ -64,10 +67,32 @@ const VideoRoom = (props) => {
         peer.on("signal", data => {
             socket.current.emit("callUser", {userToCall: id, signalData: data, from: yourID})
         })
+
+        peer.on("stream", stream => {
+            if (partnerVideo.current) partnerVideo.current.srcObject = stream;
+        })
+
+        socket.current.on("callAccepted", signal => {
+            setCallAccepted(true);
+            peer.signal(signal);
+        })
     }
 
     const acceptCall = () => {
+        setCallAccepted(true);
+        const peer = new Peer({
+            initiator: false,
+            trickle: false,
+            stream: stream,
+        })
+        peer.on("signal", data => {
+            socket.current.emit("acceptCall", {signal: data, to: caller})
+        })
+        peer.on("stream", stream => {
+            partnerVideo.current.srcObject = stream;
+        })
 
+        peer.signal(callerSignal);
     }
 
     let UserVideo;
@@ -101,13 +126,13 @@ const VideoRoom = (props) => {
                 {PartnerVideo}
             </Row>
             <Row>
-                {Object.keys(users.map(key => {
+                {Object.keys(users).map(key => {
                     if (key === yourID) return null
 
                     return (
                         <button onClick={() => callPeer(key)}>Call {key}</button>
                     )
-                }))}
+                })}
             </Row>
             <Row>
                 {incomingCall}
