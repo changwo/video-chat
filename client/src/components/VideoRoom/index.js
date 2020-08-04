@@ -126,11 +126,11 @@ const VideoRoom = (props) => {
                 {PartnerVideo}
             </Row>
             <Row>
-                {Object.keys(users).map(key => {
+                {Object.keys(users).map((key, index) => {
                     if (key === yourID) return null
 
                     return (
-                        <button onClick={() => callPeer(key)}>Call {key}</button>
+                        <button key={index} onClick={() => callPeer(key)}>Call {key}</button>
                     )
                 })}
             </Row>
